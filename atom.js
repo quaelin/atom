@@ -1,10 +1,16 @@
+//
+// atom.js
+// https://github.com/zynga/atom
+// Author: Chris Campbell (@quaelin)
+// License: BSD
+//
 (function (undef) {
 	'use strict';
 
 	var
 		atom,
 		name = 'atom',
-		VERSION = '0.4.0',
+		VERSION = '0.5.1',
 
 		ObjProto = Object.prototype,
 		hasOwn = ObjProto.hasOwnProperty,
@@ -76,7 +82,7 @@
 
 	// Property setter
 	function set(nucleus, key, value) {
-		var keys, listener, listeners = nucleus.listeners, values, missing,
+		var keys, listener, listeners = nucleus.listeners, missing,
 			listenersCopy = [].concat(listeners), i = listenersCopy.length,
 			props = nucleus.props, oldValue = props[key],
 			had = hasOwn.call(props, key),
@@ -125,6 +131,7 @@
 	// Return an instance.
 	atom = root[name] = function () {
 		var
+			args = slice.call(arguments, 0),
 			nucleus = { props: {}, needs: {}, providers: {}, listeners: [] },
 			props = nucleus.props,
 			needs = nucleus.needs,
@@ -161,6 +168,7 @@
 						}
 					}
 				}
+				return me;
 			},
 
 			// Remove references to all properties and listeners.  This releases
@@ -185,6 +193,7 @@
 					key = keys[i];
 					func(key, me.get(key));
 				}
+				return me;
 			},
 
 			// Establish two-way binding between a key or list of keys for two
@@ -222,6 +231,7 @@
 						me.set(key, value);
 					});
 				});
+				return me;
 			},
 
 			// Get current values for the specified keys.  If `func` is provided,
@@ -272,7 +282,7 @@
 			// providers when possible, in order to try and create the required
 			// values.
 			need: function (keyOrList, func) {
-				var key, keys = toArray(keyOrList), values, provider;
+				var key, keys = toArray(keyOrList), provider;
 				for (var i = keys.length; --i >= 0;) {
 					key = keys[i];
 					provider = providers[key];
@@ -286,6 +296,7 @@
 				if (func) {
 					me.once(keys, func);
 				}
+				return me;
 			},
 
 			// Call `func` whenever any of the specified keys is next changed.  The
@@ -295,6 +306,7 @@
 			next: function (keyOrList, func) {
 				listeners.unshift(
 					{ keys: toArray(keyOrList), cb: func, calls: 1 });
+				return me;
 			},
 
 			// Unregister a listener `func` that was previously registered using
@@ -305,6 +317,7 @@
 						listeners.splice(i, 1);
 					}
 				}
+				return me;
 			},
 
 			// Call `func` whenever any of the specified keys change.  The values
@@ -312,6 +325,7 @@
 			on: function (keyOrList, func) { // alias: `bind`
 				listeners.unshift({ keys: toArray(keyOrList), cb: func,
 					calls: Infinity });
+				return me;
 			},
 
 			// Call `func` as soon as all of the specified keys have been set.  If
@@ -329,6 +343,7 @@
 					listeners.unshift(
 						{ keys: keys, cb: func, missing: missing, calls: 1 });
 				}
+				return me;
 			},
 
 			// Register a provider for a particular key.  The provider `func` is a
@@ -341,6 +356,7 @@
 				} else if (!providers[key]) {
 					providers[key] = func;
 				}
+				return me;
 			},
 
 			// Set value for a key, or if `keyOrMap` is an object then set all the
@@ -355,10 +371,16 @@
 				} else {
 					set(nucleus, keyOrMap, value);
 				}
+				return me;
 			}
 		};
 		me.bind = me.on;
 		me.unbind = me.off;
+
+		if (args.length) {
+			me.set.apply(me, args);
+		}
+
 		return me;
 	};
 
