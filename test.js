@@ -1,5 +1,6 @@
 /*global atom:true, logger:true, process, require*/
 atom = typeof atom === 'undefined' ? require('./atom') : atom;
+logger = (typeof logger !== 'undefined' && logger) || console.log;
 
 var
 	inBrowser = typeof document !== 'undefined',
@@ -11,9 +12,6 @@ var
 	results = [],
 	totals = { success: 0, fail: 0, total: 0 }
 ;
-
-
-logger = (typeof logger !== 'undefined' && logger) || console.log;
 
 function assert(msg, success) {
 	totals.total++;
@@ -80,6 +78,16 @@ a.off(aListener);
 a.set('a', 'A3');
 assert('off() prevents the function from being called again',
 	results + '' === 'A1,B1,C,A2');
+
+results = [];
+a.on('aa', aListener);
+a.once('bb', aListener);
+a.once(['cc', 'dd'], aListener);
+a.off('aa', aListener);
+a.off(['cc', 'dd'], aListener);
+a.set({ aa: 'AA', bb: 'BB', cc: 'CC', dd: 'DD' });
+assert('off() will be selective about unbinding a listener, if keyOrList provided',
+	results + '' === 'BB');
 
 results = [];
 a.once('c', function (c) {
@@ -227,6 +235,14 @@ a.need('l', function (l) {
 assert('need() registered after provide() works',
 	results + '' === 'provide,need,fulfill,satisfy,L');
 
+a.provide('count', function (done) {
+	done(1);
+	done(2);
+});
+a.need('count');
+results = a.get('count');
+assert("provide() providers can't provide more than once", results === 1);
+
 results = [];
 a.chain(function (nextLink) {
 	results.push(1);
@@ -251,6 +267,26 @@ a.chain(
 	}
 );
 assert('chain() works', results + '' === '1,2,3,4,5,6,7,8');
+
+results = [];
+a.chain(
+	function (nextLink) {
+		results.push(1);
+		a.once('start-linking', function () {
+			nextLink();
+			nextLink(); // This should be ineffectual.
+		});
+	},
+	function (nextLink) {
+		results.push(2);
+	},
+	function (nextLink) {
+		// We shouldn't get here, since the previous link doesn't finish.
+		results.push(3);
+	}
+);
+a.set('start-linking');
+assert('chain() links can only get called once', results + '' === '1,2');
 
 results = [];
 a.each(['a', 'b', 'd', 'c'], function (name, val) {
@@ -331,4 +367,8 @@ setTimeout(function () {
 		set('z' + i);
 	}
 	logger('END');
+
+	if (totals.fail && inNode) {
+		process.exit(1);
+	}
 }, 100);
